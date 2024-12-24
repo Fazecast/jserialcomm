@@ -2043,23 +2043,34 @@ public class SerialPort
 						{
 							int startIndex = 0;
 							for (int offset = 0; offset < bytesRemaining; ++offset)
-								if (newBytes[offset] == delimiters[delimiterIndex])
+							{
+								if (newBytes.length == 0)
 								{
-									if ((++delimiterIndex) == delimiters.length)
+									break;
+								}
+								for (int i = 0; i < delimiters.length; i++)
+								{
+									delimiterIndex = i;
+									byte delimiter = delimiters[i];
+									if (newBytes.length >= (offset + 1) &&  newBytes[offset] == delimiter)
 									{
 										messageBytes.write(newBytes, startIndex, 1 + offset - startIndex);
-										byte[] byteArray = (messageEndIsDelimited ? messageBytes.toByteArray() : Arrays.copyOf(messageBytes.toByteArray(), messageBytes.size() - delimiters.length));
-										if ((byteArray.length > 0) && (messageEndIsDelimited || (delimiters[0] == byteArray[0])))
+										byte[] byteArray = (messageEndIsDelimited ? messageBytes.toByteArray() : Arrays.copyOf(messageBytes.toByteArray(), messageBytes.size() - offset));
+										if ((byteArray.length > 0) && (messageEndIsDelimited || (delimiters[i] == byteArray[0])))
 											userDataListener.serialEvent(new SerialPortEvent(SerialPort.this, SerialPort.LISTENING_EVENT_DATA_RECEIVED, byteArray));
 										startIndex = offset + 1;
 										messageBytes.reset();
-										delimiterIndex = 0;
 										if (!messageEndIsDelimited)
-											messageBytes.write(delimiters, 0, delimiters.length);
+											messageBytes.write(newBytes, 0, newBytes.length);
+
+										//use -1 to exclude delimiter from the read?
+										newBytes = Arrays.copyOfRange(newBytes, startIndex, newBytes.length);
+										offset = 0;
+										startIndex = 0;
+										bytesRemaining = newBytes.length;
 									}
 								}
-								else if (delimiterIndex != 0)
-									delimiterIndex = (newBytes[offset] == delimiters[0]) ? 1 : 0;
+							}
 							messageBytes.write(newBytes, startIndex, bytesRemaining - startIndex);
 						}
 						else if (dataPacket.length == 0)
